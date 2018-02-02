@@ -3,6 +3,6 @@
 DEPRECATED/
 *.pyc
 *.log
-MakeHistogramsCSV/
+MakeHistogramsCSV/old/
 MakeHistogramsXlsx
 testhistograms.py
