@@ -1,0 +1,8 @@
+#git ignore file for DTIDistance
+*DEPRECATED/
+DEPRECATED/
+*.pyc
+*.log
+MakeHistogramsCSV/
+MakeHistogramsXlsx
+testhistograms.py
