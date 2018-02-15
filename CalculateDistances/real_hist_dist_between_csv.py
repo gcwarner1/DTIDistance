@@ -45,12 +45,11 @@
   fixed bug in the extraction of histograms from the main storage matrix.
   now rename default Excel sheet to FA and create MD sheet instead of creating sheets for both FA and MD
 '''
-import os, dicom, ast, argparse, shutil, re, glob, sys
+import os, dicom, ast, argparse, shutil, re, glob, sys, csv
 import numpy as np
 import nibabel as nib
 import matplotlib.pyplot as plt
 from math import factorial
-from openpyxl import Workbook
 
 #********************************************************************************
 fileTypeList = ['_FA', '_MD']     #string in filename used to ID map type
@@ -81,6 +80,7 @@ def handle_inputs():
     parser.add_argument('--ge', nargs='?', type=bool, default=False, help='GE')
     parser.add_argument('--bval', nargs='?', type=bool, default=False, help='Bvals')
     parser.add_argument('--bvec', nargs='?', type=bool, default=False, help='Bvecs')
+    parser.add_argument('--field', nargs='?', type=bool, default=False, help='Field Strength')
     args = parser.parse_args()
     if args.siemens == False and args.ge == False:
 	sys.exit('Specify at least one manufacturer')
@@ -179,8 +179,8 @@ def create_hist(listOfRuns, fileTypeList):
 	                            #print "The histogram dtype is: ", mapHistogramNorm.dtype
 
 	                            # plot the normalized histogram
-	                            #plot_hist(mapHistogramNorm, mapBinEdges, fileNamePath)
-
+	                            plot_hist(mapHistogramNorm, mapBinEdges, fileNamePath)
+				    sys.exit()
 	                            # save the normalized histogram to a file
 	                            #print "Writing histograms to files..."
 	                            save_hist(mapHistogramNorm, fileNamePath)
@@ -210,7 +210,7 @@ def create_hist_arrays(listOfRuns, fileTypeList):
 	listofRuns: list of runs associated with a single set of parameters such as GE runs with 6 gradient directions.
 	fileTypeList: ['_FA', '_MD']
     outputs:
-	faArray: numpy array of FA histograms with one column per histogram and the values of that column being the values of that histogram
+f we used RFA, RFA N	faArray: numpy array of FA histograms with one column per histogram and the values of that column being the values of that histogram
 	faList: list of all FA histogram filepaths including file name
 	mdArray: numpy array of MD histograms with one column per histogram and the values of that column being the values of that histogram
 	mdList: list of all MD histogram filepaths including file name
@@ -389,49 +389,21 @@ def jeffreys(array1, array2):
 # writes out results to an excel spreadsheet using openpyxl
 # easier to pass both rather than write a generic function because otherwise I have to check to see 
 # if outFile already exists and then add to it, but that file might be an old version etc
-def write_to_excel(outFile, distListFA, distListMD, lenMetricList, numPairs, sheetNameFA, sheetNameMD, metricListString):
+def write_to_csv(outFile, distListFA, distListMD, lenMetricList, numPairs, metricListString):
     print "...writing the output file"
-    wb = Workbook()
-
-    # use the first worksheet for FA instead of creating a new one
-    wb.worksheets[0].title = sheetNameFA
-    wsFA = wb.worksheets[0]
-    #wsFA = wb.create_sheet(title=sheetNameFA)
-    wsMD = wb.create_sheet(title=sheetNameMD)
-
-    # get the names of the sheets
-    #print wb.get_sheet_names()
-
-    # column labels for FA
-    for k in range(len(metricListString)):
-        a = wsFA.cell(row=0, column=k)
-        a.value = metricListString[k]
-
-    lenMetricListString = len(metricListString)
-
-    b = wsFA.cell(row=0, column=lenMetricListString)
-    b.value = "file_1"
-    c = wsFA.cell(row=0, column=lenMetricListString+1)
-    c.value = "file_2"
-
-    # column labels for MD
-    for k in range(len(metricListString)):
-        a = wsMD.cell(row=0, column=k)
-        a.value = metricListString[k]
-
-    b = wsMD.cell(row=0, column=lenMetricListString)
-    b.value = "file_1"
-    c = wsMD.cell(row=0, column=lenMetricListString+1)
-    c.value = "file_2"
-
-    # write the data into the sheets
-    for i in range(numPairs):   # the 2 is for the two additional columns of file names
-        for j in range(lenMetricListString+2):
-            d = wsFA.cell(row=i+1, column=j) 
-            d.value = distListFA[i][j]
-            e = wsMD.cell(row=i+1, column=j) 
-            e.value = distListMD[i][j]
-    wb.save(filename = outFile)
+    #wb = Workbook()
+    with open(outFile+'_FA.csv', 'wb') as csvfile:
+	writer = csv.writer(csvfile)
+	writer.writerow(metricListString+['file_1','file_2'])
+	for x in distListFA:
+		writer.writerow(x)
+    csvfile.close()
+    with open(outFile+'_MD.csv', 'wb') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(metricListString+['file_1','file_2'])
+	for x in distListMD:
+		writer.writerow(x)
+    csvfile.close()
 
 
 # calls the relevant distance metric functions and calculates the distances between all found histograms
@@ -439,17 +411,18 @@ def write_to_excel(outFile, distListFA, distListMD, lenMetricList, numPairs, she
 def calc_hist_dist(arrayData, metricList):
     distListFA, distListMD = [], []
     mans = arrayData.keys()
-    for i in range(arrayData[mans[0]['faFileCountList']]):
-	for j in range(arrayData[mans[1]['faFileCountList']]):
-		dist = [f(arrayData[mans[0]]['faArray'][:,i], arrayData[mans[1]]['faArray'][:j]) for f in metricList]
-		dist.append(arrayData[mans[0]['faFileList'][i]])
-		dist.append(arrayData[mans[1]['faFileList'][j]])
+    for i in range(arrayData[mans[0]]['fileCountList'][0]):
+	for j in range(arrayData[mans[1]]['fileCountList'][0]):
+		print arrayData[mans[1]]['faArray']
+		dist = [f(arrayData[mans[0]]['faArray'][:,i], arrayData[mans[1]]['faArray'][:,j]) for f in metricList]
+		dist.append(arrayData[mans[0]]['faFileList'][i])
+		dist.append(arrayData[mans[1]]['faFileList'][j])
 		distListFA.append(dist)
-    for i in range(arrayData[mans[0]['mdFileCountList']]):
-        for j in range(arrayData[mans[1]['mdFileCountList']]):
-                dist = [f(arrayData[mans[0]]['mdArray'][:,i], arrayData[mans[1]]['mdArray'][:j]) for f in metricList]
-                dist.append(arrayData[mans[0]['mdFileList'][i]])
-                dist.append(arrayData[mans[1]['mdFileList'][j]])
+    for i in range(arrayData[mans[0]]['fileCountList'][1]):
+        for j in range(arrayData[mans[1]]['fileCountList'][1]):
+                dist = [f(arrayData[mans[0]]['mdArray'][:,i], arrayData[mans[1]]['mdArray'][:,j]) for f in metricList]
+                dist.append(arrayData[mans[0]]['mdFileList'][i])
+                dist.append(arrayData[mans[1]]['mdFileList'][j])
                 distListMD.append(dist)
     return distListFA, distListMD
 
@@ -469,9 +442,6 @@ def calc_hist_dist_single(fileCount, diffMetricArray, diffMetricFileList, metric
 	metricList: list containing algorithms which will be used to calculate distance
     '''
     distList = []
-    #print diffMetricArray[:,0]  #check to make sure I have the correct slice
-    #print 'Length diffMetricFileList = ',len(diffMetricFileList)
-    #print 'fileCount = ',fileCount
     for i in range(fileCount):
         for j in range(i+1,fileCount):
             dist = [f(diffMetricArray[:,i], diffMetricArray[:,j]) for f in metricList]
@@ -480,8 +450,6 @@ def calc_hist_dist_single(fileCount, diffMetricArray, diffMetricFileList, metric
             dist.append(diffMetricFileList[j])
             #print i, j, dist
             distList.append(dist)
-    print 'distList'
-    print len(distList)
     return distList
 
 
@@ -497,7 +465,7 @@ def makeDictOfData(root='/space/jazz/1/users/gwarner/FAandMDmaps/', dcms='/space
 	    dcms: path to raw dicoms the FA/MD maps were produced from. This is needed because the manufacturer and model are extracted from the dicom headers.
 	    niftis: path to niftis the FA/MD maps were produced from. This is where the .bval and .bvec files are.
 	output:
-	    [{'Path':'/file/path, 'Manufacturer':'GE', 'Model':'TrioTim', 'bval':'3', 'bvec':'6'}, {'Path':'/file/path1, 'Manufacturer':'SIEMENS', 'Model':'TrioTim', 'bval':'7', 'bvec':'8'}]
+	    [{'Path':'/file/path, 'Manufacturer':'GE', 'Model':'TrioTim', 'bval':'3', 'bvec':'6','field':'3.0'}, {'Path':'/file/path1, 'Manufacturer':'SIEMENS', 'Model':'TrioTim', 'bval':'7', 'bvec':'8', 'field':'3.0'}]
 
 	note for future: this could probably be combined with sortData() for decreased runtime.
 	'''
@@ -511,6 +479,7 @@ def makeDictOfData(root='/space/jazz/1/users/gwarner/FAandMDmaps/', dcms='/space
 			else:
 				info['Manufacturer'] = 'SIEMENS'
 			info['Model'] = ds[0x8,0x1090].value
+			info['field'] = str(round(float(ds[0x18,0x87].value)*2)/2) #use this to round everything to nearest 0.5. Some are given as 2.9973...
 			x = glob.glob(niftis+sub+'/'+run+'/*.bval')
 			if len(x) != 1:
 				sys.exit('Multiple .bval files found for '+root+'/'+sub+'/'+run)
@@ -575,20 +544,14 @@ def main():
     rootPath = os.path.split(os.path.realpath(__file__))[0]+'/'
     # create a list of the metrics that you want to calculate
     #********************************************************
-    metricList = [cityblock, euclidean, chebyshev, fidelity, hellinger, squaredchord, intersection, canberra, lorentzian, cosine, squaredchisquared, kullbackliebler, jeffreys]
-    metricListString = ["cityblock", "euclidean", "chebyshev", "fidelity", "hellinger", "squaredchord", "intersection", "canberra", "lorentzian", "cosine", "squaredchisquared", "kullbackliebler", "jeffreys"]
+    #metricList = [cityblock, euclidean, chebyshev, fidelity, hellinger, squaredchord, intersection, canberra, lorentzian, cosine, squaredchisquared, kullbackliebler, jeffreys]
+    #metricListString = ["cityblock", "euclidean", "chebyshev", "fidelity", "hellinger", "squaredchord", "intersection", "canberra", "lorentzian", "cosine", "squaredchisquared", "kullbackliebler", "jeffreys"]
+    metricList = [cityblock, euclidean, chebyshev, hellinger, canberra]
+    metricListString = ["cityblock", "euclidean", "chebyshev", "hellinger", "canberra"]
     #********************************************************
 
     data = makeDictOfData()
     info = sortData(data, inputVars)#{'GE':{'6 directions':[this/file,that/file],'8 directions':[a/file]}, 'SIEMENS':{}}
-    print 'inputVars'
-    print inputVars
-    print '\n'
-    print 'info'
-    print info
-    print 'info keys'
-    for key in info['SIEMENS'].keys():
-	print key+': n='+str(len(info['SIEMENS'][key]))
     setOfRuns = set()
     for x in info: #x = GE or SIEMENS
 	for y in info[x]: #y = number of gradient directions
@@ -598,67 +561,85 @@ def main():
     print "Creating normalized histograms..."
     create_hist(list(setOfRuns), fileTypeList) #
 
+    #list of numbe of gradient directions with adequate sample sizes broken down by vendor
     goodNumbers = {'SIEMENS':['12','24','30','36','60','67'],'GE':['6','15','25','29','31']}
 
     # create array of histograms; 3D = [hist_length, num_files/type, num_metric]
     print "Reading histograms into diffusion metric specific arrays..."
+    for var in inputVars:
+	if var != 'siemens' and var != 'ge':
+		independentVar = var
     if len(inputVars['manufacturers']) == 1:
 	if len(inputVars) == 1: #no variables other than manufacturers
 		pass
 	else:
-		for var in inputVars:
-			if var != 'siemens' and var != 'ge':
-				independentVar = var
 		man = inputVars['manufacturers'][0]
 		for key in info[man]: #key = '6 directions' (the corresponding value is a list of the files which have that many directions)
 		  if independentVar == 'bvec':
 		     if key in goodNumbers[man]:
-			print 'BVAL KEY'
-			print key
-			outFile = '/space/jazz/1/users/gwarner/histograms/histdist_results_'+man+'_'+independentVar+'_'+key+'.xlsx'
 			faArray, faFileList, mdArray, mdFileList, fileCountList = create_hist_arrays(info[man][key], fileTypeList)
 			numPairs = (fileCountList[0]*(fileCountList[0]-1))/2 #fileCountList[0] choose 2
-			print 'numParis'
-			print numPairs
 			distListFA = calc_hist_dist_single(fileCountList[0], faArray, faFileList, metricList)
 			distListMD = calc_hist_dist_single(fileCountList[1], mdArray, mdFileList, metricList)
 			lenMetricList = len(metricListString)
-			write_to_excel(outFile, distListFA, distListMD, lenMetricList, numPairs, sheetNameFA, sheetNameMD, metricListString)
+			write_to_csv(outFile, distListFA, distListMD, lenMetricList, numPairs, metricListString)
 		  else:
-			print '/space/jazz/1/users/gwarner/histograms/histdist_results_'+man+'_'+independentVar+'_'+key+'.xlsx'
-			outFile = '/space/jazz/1/users/gwarner/histograms/histdist_results_'+man+'_'+independentVar+'_'+key+'.xlsx'
+			outFile = '/space/jazz/1/users/gwarner/histdist_results_'+man+'_'+independentVar+'_'+key
                         faArray, faFileList, mdArray, mdFileList, fileCountList = create_hist_arrays(info[man][key], fileTypeList)
                         numPairs = (fileCountList[0]*(fileCountList[0]-1))/2 #fileCountList[0] choose 2
-                        print 'numParis'
-                        print numPairs
                         distListFA = calc_hist_dist_single(fileCountList[0], faArray, faFileList, metricList)
                         distListMD = calc_hist_dist_single(fileCountList[1], mdArray, mdFileList, metricList)
                         lenMetricList = len(metricListString)
-                        write_to_excel(outFile, distListFA, distListMD, lenMetricList, numPairs, sheetNameFA, sheetNameMD, metricListString)
+			write_to_csv(outFile, distListFA, distListMD, lenMetricList, numPairs, metricListString)
     else: #multiple manufacturers
         mans = inputVars['manufacturers']
 	if len(inputVars) == 1: #no variable other than manufacturers
 	   pass
 	else:
-           for group in info[man[0]].keys(): #i.e. group='bval'
-                for metricValue in info[man[0]][group]: #i.e. metricValue=files with 2 bvals
-                        if metricValue in info[man[1]][group]:
-			    if len(info[man[0]][group][metricValue]) > 20 and len(info[man[1]][group][metricValue]) > 20:
+           for group in info[mans[0]].keys(): #i.e. group='bval'
+                        if group in info[mans[1]]:
+                            if len(info[mans[0]][group]) > 50 and len(info[mans[1]][group]) > 50:
                                 #make arrays of the histograms for the files in the first manufacturer, then the second manufacturer.
-				outFile = '/space/jazz/1/users/gwarner/histograms/histdist_results_between_'+group+'_'+metricValue+'.xlsx'
-				arrayData = {}
-				for man in mans:
-					faArray, faFileList, mdArray, mdFileList, fileCountList = create_hist_arrays(info[array][group][man], fileTypeList)
-					dictRoot = arrayData[man]
-                                	dictRoot = {'faArray':faArray}
-                                	dictRoot['faFileList'] = faFileList
-                                	dictRoot['mdArray'] = mdArray
-                                	dictRoot['mdFileList'] = mdFileList
-                                	dictRoot['fileCountList'] = fileCountList
-				numPairs = (len(arrayData[man[0]])*(len(arrayData[man[0]])-1))/2
-                		distListFA, distListMD = calc_hist_dist(arrayData, metricList)
-                		lenMetricList = len(metricListString)
-                		write_to_excel(outFile, distListFA, distListMD, lenMetricList, numPairs, sheetNameFA, sheetNameMD, metricListString)
+                                outFile = '/space/jazz/1/users/gwarner/histograms/histdist_results_between_'+independentVar+'_'+group
+                                arrayData = {'GE':{},'SIEMENS':{}}
+                                for man in mans:
+                                        faArray, faFileList, mdArray, mdFileList, fileCountList = create_hist_arrays(info[man][group], fileTypeList)
+                                        dictRoot = arrayData[man]
+                                        dictRoot['faArray'] = faArray
+                                        dictRoot['faFileList'] = faFileList
+                                        dictRoot['mdArray'] = mdArray
+                                        dictRoot['mdFileList'] = mdFileList
+                                        dictRoot['fileCountList'] = fileCountList
+                                numPairs = (len(arrayData[mans[0]])*(len(arrayData[mans[0]])-1))/2
+                                distListFA, distListMD = calc_hist_dist(arrayData, metricList)
+                                lenMetricList = len(metricListString)
+                                write_to_csv(outFile, distListFA, distListMD, lenMetricList, numPairs, metricListString)
+			    else:
+				pass
+				#print 'Skipping %s because it only appears %d times'%(group, len(info[mans][0][group]))
+
+#                for metricValue in info[mans[0]][group]: #i.e. metricValue=files with 2 bvals
+#			print group
+#			print metricValue
+#                        if metricValue in info[mans[1]][group]:
+#			    if len(info[mans[0]][group][metricValue]) > 20 and len(info[mans[1]][group][metricValue]) > 20:
+#                                #make arrays of the histograms for the files in the first manufacturer, then the second manufacturer.
+#				outFile = '/space/jazz/1/users/gwarner/histograms/histdist_results_between_'+group+'_'+metricValue
+#				arrayData = {}
+#				for man in mans:
+#					faArray, faFileList, mdArray, mdFileList, fileCountList = create_hist_arrays(info[array][group][man], fileTypeList)
+#					dictRoot = arrayData[man]
+#                                	dictRoot = {'faArray':faArray}
+#                                	dictRoot['faFileList'] = faFileList
+#                                	dictRoot['mdArray'] = mdArray
+#                                	dictRoot['mdFileList'] = mdFileList
+#                                	dictRoot['fileCountList'] = fileCountList
+#				numPairs = (len(arrayData[mans[0]])*(len(arrayData[mans[0]])-1))/2
+#                		distListFA, distListMD = calc_hist_dist(arrayData, metricList)
+#                		lenMetricList = len(metricListString)
+				#write_to_csv('/space/jazz/1/users/gwarner/histograms/histdist_results_between_'+group+'_'+metricValue+'_FA.csv', distListFA, lenMetricList, numPairs, metricListString)
+				#write_to_csv('/space/jazz/1/users/gwarner/histograms/histdist_results_between_'+group+'_'+metricValue+'_MD.csv', distListMD, lenMetricList, numPairs, metricListString)
+#                		write_to_csv(outFile, distListFA, distListMD, lenMetricList, numPairs, metricListString)
 
 if __name__ == "__main__":
     main()
