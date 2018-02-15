@@ -1,9 +1,6 @@
-#!/space/jazz/1/users/gwarner/anaconda/bin python
-
 import matplotlib.pyplot as plt
 import numpy as np
-from collections import Counter
-import os, sys, shutil, xlrd, re, string, csv, ast, json
+import os, sys, shutil, re, csv
 
 def getSub(path):
         return str(os.path.split(path)[0])
@@ -31,7 +28,6 @@ def getData(f, badDataFiles):
     goodinds = set()
     regex = re.compile('(nan)|(NaN)|(Nan)|(NAN)|(inf)|(INF)|(Inf)|(InF)')
     rownum = 0
-    goodData = set()#REMOVE
     with open(f, 'rb') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
             for row1 in spamreader:
@@ -45,8 +41,6 @@ def getData(f, badDataFiles):
 					if regex.search(str(val)) or str(val) == '' or str(val) == '0' or str(val) == '0.0' or str(val) == '0.':
 						good = False
 				if good == True:
-					goodData.add(sub1)#REMOVE
-					goodData.add(sub2)#REMOVE
 					for val in row[:-2]:
 						ind = row[:-2].index(val)
 						data[metricIndex[ind]][sub1+'_'+sub2] = float(val)
@@ -122,7 +116,6 @@ def makePlots(flattenedData, numBins, comparison, histname, Map):
 		sys.exit('Couldnt find '+distanceMetric)
 	plt.xticks(fontsize=14)
 	plt.yticks(fontsize=14)
-	#print '/space/jazz/1/users/gwarner/dtiCharts/'+Map+'/'+comparison+'/'+distanceMetric+'_'+histname+'_'+comparison+'.png'
         plt.savefig('/space/jazz/1/users/gwarner/dtiCharts/'+Map+'/'+comparison+'/'+distanceMetric+'_'+histname+'_'+comparison+'.png')
         plt.close()    
     return histogramData

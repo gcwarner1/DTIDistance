@@ -504,7 +504,7 @@ def main():
     #********************************************************
 
     data = makeDictOfData()
-    info = sortData(data)#{'GE':{'6 directions':[this/file,that/file],'8 directions':[a/file]}, 'SIEMENS':{}}
+    info = sortData(data)#{'GE':{'6 directions':[this/file,that/file],'8 directions':[a/file]}, 'SIEMENS':{}}, edit function each run
     setOfRuns = set()
     for x in info:
 	for y in info[x]:

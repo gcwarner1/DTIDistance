@@ -618,22 +618,14 @@ def main():
 
     data = makeDictOfData()
     info = sortData(data, inputVars)#{'GE':{'6 directions':[this/file,that/file],'8 directions':[a/file]}, 'SIEMENS':{}}
-    #print 'inputVars'
-    #print inputVars
-    #print '\n'
-    #print 'info'
-    #print info
-    #print 'info keys'
-    #for key in info['SIEMENS'].keys():
-#	print key+': n='+str(len(info['SIEMENS'][key]))
     setOfRuns = set()
     for x in info: #x = GE or SIEMENS
 	for y in info[x]: #y = number of gradient directions
 		for z in info[x][y]:
 			setOfRuns.add(z)
-     # create FA and MD histograms
-#    print "Creating normalized histograms..."
-#    create_hist(list(setOfRuns), fileTypeList) #
+    # create FA and MD histograms
+    # create_hist(list(setOfRuns), fileTypeList) #
+    # number of gradient directions with adequate sample sizes broken down by manufacturer
     goodNumbers = {'SIEMENS':['12','24','30','36','60','67'],'GE':['6','15','25','29','31']}
 
     # create array of histograms; 3D = [hist_length, num_files/type, num_metric]
@@ -649,26 +641,17 @@ def main():
 		for key in info[man]: #key = '6 directions' (the corresponding value is a list of the files which have that many directions)
 		  if independentVar == 'bvec':
 		     if key in goodNumbers[man]:
-			print 'BVAL KEY'
-			print key
 			outFile = '/space/jazz/1/users/gwarner/histograms/histdist_results_'+man+'_'+independentVar+'_'+key
 			faArray, faFileList, mdArray, mdFileList, fileCountList = create_hist_arrays(info[man][key], fileTypeList)
 			numPairs = (fileCountList[0]*(fileCountList[0]-1))/2 #fileCountList[0] choose 2
-			print 'numParis'
-			print numPairs
 			distListFA = calc_hist_dist_single(fileCountList[0], faArray, faFileList, metricList)
 			distListMD = calc_hist_dist_single(fileCountList[1], mdArray, mdFileList, metricList)
 			lenMetricList = len(metricListString)
 			write_to_csv(outFile, distListFA, distListMD, lenMetricList, numPairs, metricListString)
 		  else:
-			#print '/space/jazz/1/users/gwarner/histograms/histdist_results_'+man+'_'+independentVar+'_'+key
-			#outFile = '/space/jazz/1/users/gwarner/histograms/histdist_results_'+man+'_'+independentVar+'_'+key
-			print '/space/jazz/1/users/gwarner/histdist_results_'+man+'_'+independentVar+'_'+key
 			outFile = '/space/jazz/1/users/gwarner/histdist_results_'+man+'_'+independentVar+'_'+key
                         faArray, faFileList, mdArray, mdFileList, fileCountList = create_hist_arrays(info[man][key], fileTypeList)
                         numPairs = (fileCountList[0]*(fileCountList[0]-1))/2 #fileCountList[0] choose 2
-                        print 'numParis'
-                        print numPairs
                         distListFA = calc_hist_dist_single(fileCountList[0], faArray, faFileList, metricList)
                         distListMD = calc_hist_dist_single(fileCountList[1], mdArray, mdFileList, metricList)
                         lenMetricList = len(metricListString)
@@ -695,8 +678,6 @@ def main():
                                 numPairs = (len(arrayData[mans[0]])*(len(arrayData[mans[0]])-1))/2
                                 distListFA, distListMD = calc_hist_dist(arrayData, metricList)
                                 lenMetricList = len(metricListString)
-                                #write_to_csv('/space/jazz/1/users/gwarner/histograms/histdist_results_between_'+group+'_'+metricValue+'_FA.csv', distListFA, lenMetricList, numPairs, metricListString)
-                                #write_to_csv('/space/jazz/1/users/gwarner/histograms/histdist_results_between_'+group+'_'+metricValue+'_MD.csv', distListMD, lenMetricList, numPairs, metricListString)
                                 write_to_csv(outFile, distListFA, distListMD, lenMetricList, numPairs, metricListString)
 			    else:
 				pass

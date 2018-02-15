@@ -1,9 +1,4 @@
-#!/space/jazz/1/users/gwarner/anaconda/bin python
-
-import matplotlib.pyplot as plt
-import numpy as np
-from collections import Counter
-import os, sys, shutil, argparse, glob, xlrd, re, string, csv, ast, json
+import sys, argparse, re
 from csvUtils import *
 
 parser = argparse.ArgumentParser()
