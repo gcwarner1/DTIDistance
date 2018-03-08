@@ -15,4 +15,4 @@ Basic Usage Pipeline
 7.) Make plots. To make box and whisker plots edit and run PlottingScripts/make_box_plots.py. To make simple histogram representation of the FA/MD distribution of a single map edit and run PlottingScripts/makeBasicPlot.py. To make cumulative frequency histograms and obtain the Kolmogorov-Smirnov test statistic edit and run PlottingScripts/make_cumulative_Kolmogrov_plot.py
 
 
-This code has been heavily refactored in order to make it more useful to other researchers. The original code that was actually used to perform the analysis in the "Characterization of Diffusion Metric Map Similarity in Data from a Clinical PACS using the Histogram Distance" paper can be found in the "legacy_code" directory.
+This code has been heavily refactored in order to make it more useful to other researchers. The original code that was actually used to perform the analysis in Warner GC and Helmer KG (2018) Characterization of Diffusion Metric Map Similarity in Data From a Clinical Data Repository Using Histogram Distances. Front. Neurosci. 12:133. doi: 10.3389/fnins.2018.00133 can be found in the "legacy_code" directory.
