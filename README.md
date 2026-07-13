@@ -1,4 +1,4 @@
-##Basic Usage Pipeline
+## Basic Usage Pipeline
 
 1.) Retrieve radiology reports from RPDR
 
